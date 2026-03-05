@@ -7,8 +7,13 @@ import { Calendar } from "rsuite";
 import "rsuite/dist/rsuite.min.css";
 import "./PatientHome.css";
 
-const toDateStr = (d) => d.toISOString().split("T")[0];
-const todayStr  = ()  => toDateStr(new Date());
+const toDateStr = (d) => {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+const todayStr = () => toDateStr(new Date());
 
 const to12h = (time24) => {
   if (!time24) return "";
@@ -35,33 +40,33 @@ const isSalesMtgType = (t) => t === SALES_MEETING_TYPE;
 
 export default function PatientHome() {
   const navigate = useNavigate();
-  const token    = localStorage.getItem("token");
+  const token = localStorage.getItem("token");
   const fullName = localStorage.getItem("full_name") || "Patient";
 
-  const [section,        setSection]        = useState("calendar");
-  const [appointments,   setAppointments]   = useState([]);
-  const [selectedDate,   setSelectedDate]   = useState(null);
-  const [selectedIndex,  setSelectedIndex]  = useState(0);
-  const [doctorAvailable,setDoctorAvailable]= useState(null);
+  const [section, setSection] = useState("calendar");
+  const [appointments, setAppointments] = useState([]);
+  const [selectedDate, setSelectedDate] = useState(null);
+  const [selectedIndex, setSelectedIndex] = useState(0);
+  const [doctorAvailable, setDoctorAvailable] = useState(null);
 
   // ── Booking form state ─────────────────────────────────────────────────────
-  const [clinics,        setClinics]        = useState([]);
-  const [doctors,        setDoctors]        = useState([]);
-  const [salesUsers,     setSalesUsers]     = useState([]);
-  const [bookType,       setBookType]       = useState("consultation");
-  const [bookClinic,     setBookClinic]     = useState("");
-  const [bookDoctor,     setBookDoctor]     = useState("");
-  const [bookSales,      setBookSales]      = useState("");
-  const [bookReason,     setBookReason]     = useState("");
-  const [bookDate,       setBookDate]       = useState("");
-  const [bookTime,       setBookTime]       = useState("");
+  const [clinics, setClinics] = useState([]);
+  const [doctors, setDoctors] = useState([]);
+  const [salesUsers, setSalesUsers] = useState([]);
+  const [bookType, setBookType] = useState("consultation");
+  const [bookClinic, setBookClinic] = useState("");
+  const [bookDoctor, setBookDoctor] = useState("");
+  const [bookSales, setBookSales] = useState("");
+  const [bookReason, setBookReason] = useState("");
+  const [bookDate, setBookDate] = useState("");
+  const [bookTime, setBookTime] = useState("");
   const [bookDepartment, setBookDepartment] = useState("");
-  const [bookRemark,     setBookRemark]     = useState("");
-  const [bookDuration,   setBookDuration]   = useState(30);
-  const [bookMsg,        setBookMsg]        = useState("");
-  const [availSlots,     setAvailSlots]     = useState([]);
-  const [slotsLoading,   setSlotsLoading]   = useState(false);
-  const [noSlotsMsg,     setNoSlotsMsg]     = useState("");
+  const [bookRemark, setBookRemark] = useState("");
+  const [bookDuration, setBookDuration] = useState(30);
+  const [bookMsg, setBookMsg] = useState("");
+  const [availSlots, setAvailSlots] = useState([]);
+  const [slotsLoading, setSlotsLoading] = useState(false);
+  const [noSlotsMsg, setNoSlotsMsg] = useState("");
 
   const isSalesMeeting = isSalesMtgType(bookType);
 
@@ -69,7 +74,7 @@ export default function PatientHome() {
 
   const loadAppointments = useCallback(async () => {
     try {
-      const res  = await fetch(`${API}/api/patient/appointments/`, {
+      const res = await fetch(`${API}/api/patient/appointments/`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
@@ -103,7 +108,7 @@ export default function PatientHome() {
 
   useEffect(() => {
     setBookClinic(""); setBookDoctor(""); setBookSales("");
-    setBookDate("");   setBookTime("");
+    setBookDate(""); setBookTime("");
     setAvailSlots([]); setNoSlotsMsg(""); setBookMsg("");
   }, [bookType]);
 
@@ -145,12 +150,13 @@ export default function PatientHome() {
     appointments.filter(a => a.scheduled_time?.startsWith(ds));
 
   const selectedAppts = selectedDate ? appointmentsOnDate(selectedDate) : [];
-  const selected      = selectedAppts[selectedIndex] || null;
+  const selected = selectedAppts[selectedIndex] || null;
 
   useEffect(() => {
-    if (!selected?.doctor) { setDoctorAvailable(null); return; }
+    const doctorId = selected?.doctor?.id ?? selected?.doctor;  // handles both object and plain id
+    if (!doctorId) { setDoctorAvailable(null); return; }
     if (selected.appointment_type === SALES_MEETING_TYPE) { setDoctorAvailable(true); return; }
-    fetch(`${API}/api/doctor/available/${selected.doctor}/`, {
+    fetch(`${API}/api/doctor/available/${doctorId}/`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then(r => r.json())
@@ -158,8 +164,8 @@ export default function PatientHome() {
       .catch(() => setDoctorAvailable(false));
   }, [selected, token]);
 
-  const handleLogout        = () => { localStorage.clear(); navigate("/"); };
-  const todayAppointments   = appointments.filter(a => a.scheduled_time?.startsWith(todayStr()));
+  const handleLogout = () => { localStorage.clear(); navigate("/"); };
+  const todayAppointments = appointments.filter(a => a.scheduled_time?.startsWith(todayStr()));
 
   // ── RSuite Calendar ────────────────────────────────────────────────────────
   // renderCell: called for every day cell — shows coloured dots for appointments
@@ -167,18 +173,18 @@ export default function PatientHome() {
     const appts = appointmentsOnDate(toDateStr(date));
     if (!appts.length) return null;
     return (
-      <div style={{ display:"flex", flexWrap:"wrap", gap:2, justifyContent:"center", marginTop:2 }}>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 2, justifyContent: "center", marginTop: 2 }}>
         {appts.slice(0, 3).map((a, i) => (
           <span key={i} style={{
-            width:        6,
-            height:       6,
+            width: 6,
+            height: 6,
             borderRadius: "50%",
-            background:   a.appointment_type === SALES_MEETING_TYPE ? "#f59e0b" : "#4ade80",
-            display:      "inline-block",
+            background: a.appointment_type === SALES_MEETING_TYPE ? "#f59e0b" : "#4ade80",
+            display: "inline-block",
           }} />
         ))}
         {appts.length > 3 && (
-          <span style={{ fontSize:9, color:"#94a3b8" }}>+{appts.length - 3}</span>
+          <span style={{ fontSize: 9, color: "#94a3b8" }}>+{appts.length - 3}</span>
         )}
       </div>
     );
@@ -186,7 +192,7 @@ export default function PatientHome() {
 
   // onSelect: fired when user clicks a day
   const handleCalSelect = (date) => {
-    const ds    = toDateStr(date);
+    const ds = toDateStr(date);
     const appts = appointmentsOnDate(ds);
     if (appts.length) { setSelectedDate(ds); setSelectedIndex(0); }
   };
@@ -194,20 +200,20 @@ export default function PatientHome() {
   // ── Appointment card ───────────────────────────────────────────────────────
   const renderAppointmentCard = () => {
     if (!selected) return null;
-    const appt        = selected;
-    const pp          = appt.participants?.find(p => p.role === "patient") || {};
-    const isEnded     = appt.status === "ended";
-    const total       = selectedAppts.length;
+    const appt = selected;
+    const pp = appt.participants?.find(p => p.role === "patient") || {};
+    const isEnded = appt.status === "ended";
+    const total = selectedAppts.length;
     const canJoinTime = isTimeToJoin(appt.scheduled_time);
-    const isSalesMtg  = appt.appointment_type === SALES_MEETING_TYPE;
-    const canJoin     = isSalesMtg ? true : (doctorAvailable === true);
+    const isSalesMtg = appt.appointment_type === SALES_MEETING_TYPE;
+    const canJoin = isSalesMtg ? true : (doctorAvailable === true);
 
     const handleStart = async () => {
       try {
-        const res  = await fetch(`${API}/api/meeting/direct-entry/`, {
-          method:  "POST",
+        const res = await fetch(`${API}/api/meeting/direct-entry/`, {
+          method: "POST",
           headers: { "Content-Type": "application/json" },
-          body:    JSON.stringify({ meeting_id: appt.meeting_id, room_id: appt.room_id }),
+          body: JSON.stringify({ meeting_id: appt.meeting_id, room_id: appt.room_id }),
         });
         const data = await res.json();
         if (!res.ok) { alert(data.error || "Cannot join appointment"); return; }
@@ -218,21 +224,21 @@ export default function PatientHome() {
     return (
       <div className="appt-card-overlay" onClick={() => { setSelectedDate(null); setSelectedIndex(0); }}>
         <div className="appt-card" onClick={e => e.stopPropagation()}>
-          <button className="card-close" onClick={() => { setSelectedDate(null); setSelectedIndex(0); }}>xy</button>
+          <button className="card-close" onClick={() => { setSelectedDate(null); setSelectedIndex(0); }}>x</button>
 
           {total > 1 && (
             <div className="card-nav">
-              <button disabled={selectedIndex === 0}         onClick={() => setSelectedIndex(i => i - 1)}>‹</button>
+              <button disabled={selectedIndex === 0} onClick={() => setSelectedIndex(i => i - 1)}>‹</button>
               <span>Appointment {selectedIndex + 1} of {total}</span>
               <button disabled={selectedIndex === total - 1} onClick={() => setSelectedIndex(i => i + 1)}>›</button>
             </div>
           )}
 
-          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <h3>{isSalesMtg ? "💼 Sales Meeting" : "📋 Appointment Details"}</h3>
             {isEnded && <span className="badge-ended">COMPLETED</span>}
             {isSalesMtg && !isEnded && (
-              <span style={{ background:"rgba(245,158,11,0.15)", color:"#f59e0b", padding:"3px 10px", borderRadius:20, fontSize:"0.76rem", fontWeight:700 }}>
+              <span style={{ background: "rgba(245,158,11,0.15)", color: "#f59e0b", padding: "3px 10px", borderRadius: 20, fontSize: "0.76rem", fontWeight: 700 }}>
                 SALES MEETING
               </span>
             )}
@@ -260,31 +266,31 @@ export default function PatientHome() {
                 <div className="card-field"><label>8. Doctor</label>    <span>{appt.doctor_name ? `Dr. ${appt.doctor_name}` : "—"}</span></div>
               </>
             )}
-            <div className="card-field"><label>{isSalesMtg ? "7."  : "9."}  Reason</label><span>{appt.appointment_reason || "—"}</span></div>
-            <div className="card-field"><label>{isSalesMtg ? "8."  : "10."} Date</label>  <span>{appt.scheduled_time?.split("T")[0] || "—"}</span></div>
-            <div className="card-field"><label>{isSalesMtg ? "9."  : "11."} Time</label>  <span>{timeFrom(appt.scheduled_time)}</span></div>
+            <div className="card-field"><label>{isSalesMtg ? "7." : "9."}  Reason</label><span>{appt.appointment_reason || "—"}</span></div>
+            <div className="card-field"><label>{isSalesMtg ? "8." : "10."} Date</label>  <span>{appt.scheduled_time?.split("T")[0] || "—"}</span></div>
+            <div className="card-field"><label>{isSalesMtg ? "9." : "11."} Time</label>  <span>{timeFrom(appt.scheduled_time)}</span></div>
             <div className="card-field"><label>{isSalesMtg ? "10." : "12."} Remark</label><span>{appt.remark || "—"}</span></div>
           </div>
 
           {isEnded ? (
-            <div style={{ marginTop:15, borderTop:"1px solid #334155", paddingTop:10 }}>
-              <h4 style={{ margin:"0 0 5px", fontSize:14, color:"#94a3b8" }}>📝 Consultation Transcript</h4>
+            <div style={{ marginTop: 15, borderTop: "1px solid #334155", paddingTop: 10 }}>
+              <h4 style={{ margin: "0 0 5px", fontSize: 14, color: "#94a3b8" }}>📝 Consultation Transcript</h4>
               <div className="transcript-box">
-                {appt.speech_to_text || <em style={{ color:"#64748b" }}>No transcript recorded.</em>}
+                {appt.speech_to_text || <em style={{ color: "#64748b" }}>No transcript recorded.</em>}
               </div>
             </div>
           ) : (
             <div className="card-start-row">
               {!canJoinTime && (
-                <p className="avail-checking" style={{ textAlign:"center", marginBottom:8 }}>
+                <p className="avail-checking" style={{ textAlign: "center", marginBottom: 8 }}>
                   ⏰ Meeting starts at {timeFrom(appt.scheduled_time)}
                 </p>
               )}
               {!isSalesMtg && doctorAvailable === null && (
                 <span className="avail-checking">Checking doctor availability…</span>
               )}
-              {canJoin && canJoinTime  && <button className="btn-start-green" onClick={handleStart}>📹 Start Appointment</button>}
-              {canJoin && !canJoinTime && <button className="btn-start-grey"  disabled>⏰ Too Early to Join</button>}
+              {canJoin && canJoinTime && <button className="btn-start-green" onClick={handleStart}>📹 Start Appointment</button>}
+              {canJoin && !canJoinTime && <button className="btn-start-grey" disabled>⏰ Too Early to Join</button>}
               {!isSalesMtg && doctorAvailable === false && (
                 <button className="btn-start-grey" disabled>🚫 Doctor Not Available Right Now</button>
               )}
@@ -299,23 +305,23 @@ export default function PatientHome() {
   const renderTimeGrid = () => {
     const slots = [];
     for (let h = 0; h < 24; h++)
-      for (const m of ["00","15","30","45"])
-        slots.push(`${String(h).padStart(2,"0")}:${m}`);
+      for (const m of ["00", "15", "30", "45"])
+        slots.push(`${String(h).padStart(2, "0")}:${m}`);
 
     return (
-      <div style={{ marginTop:8 }}>
-        {noSlotsMsg && <p style={{ fontSize:12, color:"#94a3b8", marginBottom:6, fontStyle:"italic" }}>{noSlotsMsg}</p>}
-        <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(90px, 1fr))", gap:6, maxHeight:360, overflowY:"auto", padding:4, background:"#0a0f1a", borderRadius:8, border:"1px solid #334155" }}>
+      <div style={{ marginTop: 8 }}>
+        {noSlotsMsg && <p style={{ fontSize: 12, color: "#94a3b8", marginBottom: 6, fontStyle: "italic" }}>{noSlotsMsg}</p>}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(90px, 1fr))", gap: 6, maxHeight: 360, overflowY: "auto", padding: 4, background: "#0a0f1a", borderRadius: 8, border: "1px solid #334155" }}>
           {slots.map(slot => {
             const isPref = availSlots.includes(slot);
-            const isSel  = bookTime === slot;
+            const isSel = bookTime === slot;
             return (
               <button key={slot} type="button" onClick={() => setBookTime(slot)} style={{
-                padding:"9px 6px", borderRadius:6, fontSize:"0.79rem", cursor:"pointer",
+                padding: "9px 6px", borderRadius: 6, fontSize: "0.79rem", cursor: "pointer",
                 fontWeight: isSel ? 700 : 500,
                 background: isSel ? "linear-gradient(135deg,#10b981,#34d399)" : isPref ? "#1e3a5f" : "#0f172a",
-                color:      isSel ? "#fff" : isPref ? "#93c5fd" : "#475569",
-                border:     isSel ? "2px solid #10b981" : isPref ? "1px solid #3b82f6" : "1px solid #1e293b",
+                color: isSel ? "#fff" : isPref ? "#93c5fd" : "#475569",
+                border: isSel ? "2px solid #10b981" : isPref ? "1px solid #3b82f6" : "1px solid #1e293b",
                 transition: "all 0.15s",
               }}>
                 {to12h(slot)}
@@ -323,8 +329,8 @@ export default function PatientHome() {
             );
           })}
         </div>
-        {availSlots.length > 0 && <p style={{ fontSize:11, color:"#3b82f6", marginTop:6 }}>🔵 Blue = doctor's confirmed available slots</p>}
-        {bookTime && <p style={{ fontSize:13, color:"#4ade80", marginTop:6 }}>✓ Selected: {to12h(bookTime)}</p>}
+        {availSlots.length > 0 && <p style={{ fontSize: 11, color: "#3b82f6", marginTop: 6 }}>🔵 Blue = doctor's confirmed available slots</p>}
+        {bookTime && <p style={{ fontSize: 13, color: "#4ade80", marginTop: 6 }}>✓ Selected: {to12h(bookTime)}</p>}
       </div>
     );
   };
@@ -342,13 +348,13 @@ export default function PatientHome() {
         body.sales_id = parseInt(bookSales);
       } else {
         body.clinic = parseInt(bookClinic);
-        const doc   = doctors.find(d => String(d.id) === String(bookDoctor));
-        body.doctor     = doc ? { username: doc.username, id: doc.id } : null;
+        const doc = doctors.find(d => String(d.id) === String(bookDoctor));
+        body.doctor = doc ? { username: doc.username, id: doc.id } : null;
         body.department = bookDepartment;
         if (bookSales) body.sales_id = parseInt(bookSales);
       }
-      const res  = await fetch(`${API}/api/book-appointment/`, {
-        method:"POST", headers:{ "Content-Type":"application/json", Authorization:`Bearer ${token}` }, body:JSON.stringify(body),
+      const res = await fetch(`${API}/api/book-appointment/`, {
+        method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify(body),
       });
       const data = await res.json();
       if (!res.ok) { setBookMsg(`⚠ ${data.error || "Booking failed"}`); return; }
@@ -366,9 +372,9 @@ export default function PatientHome() {
           <div className="nav-avatar">👤</div>
           <p className="nav-greeting">Hi, {fullName}</p>
         </div>
-        <button className={`nav-btn ${section==="calendar"?"active":""}`} onClick={() => setSection("calendar")}>📅 Calendar</button>
-        <button className={`nav-btn ${section==="book"    ?"active":""}`} onClick={() => setSection("book")}>📝 Book Appointment</button>
-        <button className={`nav-btn ${section==="join"    ?"active":""}`} onClick={() => setSection("join")}>📹 Join Appointment</button>
+        <button className={`nav-btn ${section === "calendar" ? "active" : ""}`} onClick={() => setSection("calendar")}>📅 Calendar</button>
+        <button className={`nav-btn ${section === "book" ? "active" : ""}`} onClick={() => setSection("book")}>📝 Book Appointment</button>
+        <button className={`nav-btn ${section === "join" ? "active" : ""}`} onClick={() => setSection("join")}>📹 Join Appointment</button>
         <button className="nav-logout" onClick={handleLogout}>🚪 Logout</button>
       </nav>
 
@@ -391,19 +397,19 @@ export default function PatientHome() {
             </div>
 
             {/* Dot legend */}
-            <div style={{ display:"flex", gap:16, marginTop:8, fontSize:12, color:"#94a3b8" }}>
+            <div style={{ display: "flex", gap: 16, marginTop: 8, fontSize: 12, color: "#94a3b8" }}>
               <span>
-                <span style={{ display:"inline-block", width:8, height:8, borderRadius:"50%", background:"#4ade80", marginRight:4 }} />
+                <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: "#4ade80", marginRight: 4 }} />
                 Consultation
               </span>
               <span>
-                <span style={{ display:"inline-block", width:8, height:8, borderRadius:"50%", background:"#f59e0b", marginRight:4 }} />
+                <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: "#f59e0b", marginRight: 4 }} />
                 Sales Meeting
               </span>
             </div>
 
             {appointments.length === 0 && (
-              <p className="empty-msg" style={{ textAlign:"center", marginTop:16, color:"#64748b" }}>
+              <p className="empty-msg" style={{ textAlign: "center", marginTop: 16, color: "#64748b" }}>
                 No appointments found. Book one using the "Book Appointment" tab.
               </p>
             )}
@@ -451,12 +457,12 @@ export default function PatientHome() {
                     {doctors.map(d => <option key={d.id} value={d.id}>Dr. {d.full_name}{d.department ? ` (${d.department})` : ""}</option>)}
                   </select>
 
-                  <label>Assign Sales Rep <span style={{ fontWeight:400, color:"#94a3b8" }}>(optional)</span></label>
+                  <label>Assign Sales Rep <span style={{ fontWeight: 400, color: "#94a3b8" }}>(optional)</span></label>
                   <select value={bookSales} onChange={e => setBookSales(e.target.value)}>
                     <option value="">— No sales rep —</option>
                     {salesUsers.map(s => <option key={s.id} value={s.id}>{s.full_name || s.username}{s.clinic ? ` · ${s.clinic}` : ""}</option>)}
                   </select>
-                  {bookSales && <p style={{ fontSize:12, color:"#f59e0b", margin:"-6px 0 6px" }}>⚠ Sales rep will be included in the meeting room.</p>}
+                  {bookSales && <p style={{ fontSize: 12, color: "#f59e0b", margin: "-6px 0 6px" }}>⚠ Sales rep will be included in the meeting room.</p>}
 
                   <label>Department</label>
                   <input type="text" placeholder="e.g. Cardiology" value={bookDepartment} onChange={e => setBookDepartment(e.target.value)} />
@@ -469,12 +475,12 @@ export default function PatientHome() {
               <label>Date *</label>
               <input type="date" value={bookDate} min={todayStr()} onChange={e => setBookDate(e.target.value)} required />
 
-              <label>Time * {slotsLoading && <span style={{ fontWeight:400, color:"#94a3b8" }}>Loading slots…</span>}</label>
+              <label>Time * {slotsLoading && <span style={{ fontWeight: 400, color: "#94a3b8" }}>Loading slots…</span>}</label>
               {(() => {
                 if ((!isSalesMeeting && (!bookDoctor || !bookDate)) || (isSalesMeeting && (!bookSales || !bookDate)))
-                  return <p style={{ fontSize:13, color:"#64748b", fontStyle:"italic" }}>{isSalesMeeting ? "Select a sales rep and date first." : "Select a doctor and date first."}</p>;
+                  return <p style={{ fontSize: 13, color: "#64748b", fontStyle: "italic" }}>{isSalesMeeting ? "Select a sales rep and date first." : "Select a doctor and date first."}</p>;
                 if (slotsLoading)
-                  return <p style={{ fontSize:13, color:"#94a3b8" }}>Checking availability…</p>;
+                  return <p style={{ fontSize: 13, color: "#94a3b8" }}>Checking availability…</p>;
                 return renderTimeGrid();
               })()}
 
@@ -503,8 +509,8 @@ export default function PatientHome() {
             {todayAppointments.length === 0
               ? <p className="empty-msg">No appointments scheduled for today.</p>
               : <div className="join-list">{todayAppointments.map(appt => (
-                  <TodayAppointmentRow key={appt.meeting_id} appt={appt} token={token} navigate={navigate} />
-                ))}</div>
+                <TodayAppointmentRow key={appt.meeting_id} appt={appt} token={token} navigate={navigate} />
+              ))}</div>
             }
           </div>
         )}
@@ -522,19 +528,20 @@ function TodayAppointmentRow({ appt, token, navigate }) {
 
   useEffect(() => {
     if (isSalesMtg) { setAvailable(true); return; }
-    if (!appt.doctor) return;
+    const doctorId = appt.doctor?.id ?? appt.doctor;  // handles both object and plain id
+    if (!doctorId) return;
     const check = () =>
-      fetch(`${API}/api/doctor/available/${appt.doctor}/`, { headers: { Authorization: `Bearer ${token}` } })
+      fetch(`${API}/api/doctor/available/${doctorId}/`, { headers: { Authorization: `Bearer ${token}` } })
         .then(r => r.json()).then(d => setAvailable(d.available)).catch(() => setAvailable(false));
     check();
     const iv = setInterval(check, 30000);
     return () => clearInterval(iv);
-  }, [appt.doctor, token, isSalesMtg]);
+  }, [appt.doctor?.id ?? appt.doctor, token, isSalesMtg]);
 
   const handleJoin = async () => {
     try {
-      const res  = await fetch(`${API}/api/meeting/direct-entry/`, {
-        method:"POST", headers:{ "Content-Type":"application/json" },
+      const res = await fetch(`${API}/api/meeting/direct-entry/`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ meeting_id: appt.meeting_id, room_id: appt.room_id }),
       });
       const data = await res.json();
@@ -543,7 +550,7 @@ function TodayAppointmentRow({ appt, token, navigate }) {
     } catch (e) { alert("Error joining room: " + e.message); }
   };
 
-  const time    = to12h(appt.scheduled_time?.split("T")[1]?.slice(0, 5) || "");
+  const time = to12h(appt.scheduled_time?.split("T")[1]?.slice(0, 5) || "");
   const isEnded = appt.status === "ended";
 
   return (
@@ -553,13 +560,13 @@ function TodayAppointmentRow({ appt, token, navigate }) {
         {isSalesMtg ? <span>💼 {appt.sales_name || "Sales Rep"}</span> : <span>Dr. {appt.doctor_name}</span>}
         <span>{appt.appointment_reason || (isSalesMtg ? "Sales Meeting" : "Consultation")}</span>
         {appt.clinic_name && <span className="join-clinic">{appt.clinic_name}</span>}
-        {isSalesMtg && <span className="join-clinic" style={{ background:"rgba(245,158,11,0.15)", color:"#f59e0b" }}>Sales</span>}
+        {isSalesMtg && <span className="join-clinic" style={{ background: "rgba(245,158,11,0.15)", color: "#f59e0b" }}>Sales</span>}
       </div>
       {isEnded
         ? <span className="badge-ended-sm">Ended</span>
         : <button className={`btn-join ${available ? "green" : "grey"}`} onClick={handleJoin} disabled={!available}>
-            {available === null ? "⏳ Checking…" : available ? "📹 Join" : "🚫 Not Available"}
-          </button>
+          {available === null ? "⏳ Checking…" : available ? "📹 Join" : "🚫 Not Available"}
+        </button>
       }
     </div>
   );

@@ -4,67 +4,44 @@ import { IoIosChatboxes } from "react-icons/io";
 import { MdSpeakerNotes } from "react-icons/md";
 import { MdPerson } from "react-icons/md";
 import { AiFillExclamationCircle } from "react-icons/ai";
+
 const TransSideBar = ({ activeSidebar, setActiveSidebar, notes }) => {
     return (
         <div className='sidebar-container'>
+            {/* ── Tab Nav ── */}
             <div className='sidebar-nav'>
                 <div className='nselected' onClick={() => setActiveSidebar(activeSidebar === "chat" ? null : "chat")}>
-                    <IoIosChatboxes></IoIosChatboxes>
+                    <IoIosChatboxes />
                 </div>
-                <div className='selected' onClick={() => setActiveSidebar(activeSidebar === "notes" ? null : "notes")} >
-                    <div style={{ marginTop: '3px' }}>
-                        <MdSpeakerNotes></MdSpeakerNotes>
-                    </div>
-                    <div className='chat'>
-                        Transcript
-                    </div>
+                <div className='selected' onClick={() => setActiveSidebar(activeSidebar === "notes" ? null : "notes")}>
+                    <MdSpeakerNotes />
+                    <span className='chat'>Transcript</span>
                 </div>
                 <div className='nselected' onClick={() => setActiveSidebar(activeSidebar === "person" ? null : "person")}>
-                    <MdPerson></MdPerson>
+                    <MdPerson />
                 </div>
                 <div className='nselected' onClick={() => setActiveSidebar(activeSidebar === "alert" ? null : "alert")}>
-                    <AiFillExclamationCircle></AiFillExclamationCircle>
+                    <AiFillExclamationCircle />
                 </div>
-
             </div>
+
+            {/* ── Transcript lines ── */}
             <div className='sidebar-content'>
-                <div style={{ padding: '16px', height: '60vh' }}>
                 {notes && notes.length > 0 ? (
-                        notes.map((note, index) => (
-                            <div key={index} style={{ marginBottom: '12px', fontSize: '14px' }}>
-                                {/* Speaker Name - Conditional Color */}
-                                <span style={{ 
-                                    fontFamily: 'Nunito',
-                                    fontWeight: 400,
-                                    fontStyle: 'Regular',
-                                    fontSize: '14px',
-                                    
-                                    
-                                    color: "#9E9E9E",
-                                    marginRight: '6px' 
-                                }}>
-                                    {note.speaker}:
-                                </span>
-
-                                {/* Transcript Text - Different Color */}
-                                <span style={{ color: '#444', lineHeight: '1.4' }}>
-                                    {note.text}
-                                </span>
-
-                                
-                            </div>
-                        ))
-                    ) : (
-                        <p style={{ color: '#999', fontStyle: 'italic', fontSize: '13px' }}>
-                            Live conversation transcript will appear here...
-                        </p>
-                    )}
-                </div>
-            </div>
-            <div className='sidebar-bottom'>
-
+                    notes.map((note, index) => (
+                        <div key={index} className='transcript-line'>
+                            <span style={{ fontWeight: 600, color: '#9E9E9E' }}>{note.speaker}: </span>
+                            <span style={{ color: '#353535' }}>{note.text}</span>
+                        </div>
+                    ))
+                ) : (
+                    <p style={{ color: '#bbb', fontStyle: 'italic', fontSize: 13, textAlign: 'center', marginTop: 24 }}>
+                        Live transcript will appear here...
+                    </p>
+                )}
             </div>
 
+            <div className='sidebar-bottom' />
         </div>
     )
 }

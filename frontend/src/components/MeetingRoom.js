@@ -158,6 +158,8 @@ export default function MeetingRoom() {
 
   const [micOn, setMicOn] = useState(true);
   const [camOn, setCamOn] = useState(true);
+  const [isScreenSharing, setIsScreenSharing] = useState(false);
+  const screenTrackRef = useRef(null);
   const [connected, setConnected] = useState(false);
   const [sttStatus, setSttStatus] = useState("");
   const [transcript, setTranscript] = useState("");
@@ -368,6 +370,48 @@ export default function MeetingRoom() {
     setCamOn(next);
   };
 
+  const toggleScreenShare = async () => {
+    if (isScreenSharing) {
+      // Stop screen share — revert to camera
+      screenTrackRef.current?.stop();
+      const camTrack = localStreamRef.current?.getVideoTracks()[0];
+      if (camTrack) {
+        Object.values(peersRef.current).forEach(({ pc }) => {
+          const sender = pc.getSenders().find(s => s.track?.kind === "video");
+          if (sender) sender.replaceTrack(camTrack);
+        });
+      }
+      screenTrackRef.current = null;
+      setIsScreenSharing(false);
+    } else {
+      try {
+        const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
+        const screenTrack = screenStream.getVideoTracks()[0];
+        screenTrackRef.current = screenTrack;
+        // Replace video track in every peer connection
+        Object.values(peersRef.current).forEach(({ pc }) => {
+          const sender = pc.getSenders().find(s => s.track?.kind === "video");
+          if (sender) sender.replaceTrack(screenTrack);
+        });
+        setIsScreenSharing(true);
+        // Auto-revert when user stops via browser UI
+        screenTrack.onended = () => {
+          const camTrack = localStreamRef.current?.getVideoTracks()[0];
+          if (camTrack) {
+            Object.values(peersRef.current).forEach(({ pc }) => {
+              const sender = pc.getSenders().find(s => s.track?.kind === "video");
+              if (sender) sender.replaceTrack(camTrack);
+            });
+          }
+          screenTrackRef.current = null;
+          setIsScreenSharing(false);
+        };
+      } catch (err) {
+        if (err.name !== "NotAllowedError") setError("Screen share failed: " + err.message);
+      }
+    }
+  };
+
   const sendChat = (text) => {
     if (!text || sigWsRef.current?.readyState !== WebSocket.OPEN) return;
     sigWsRef.current.send(JSON.stringify({ type: "chat", text }));
@@ -375,6 +419,8 @@ export default function MeetingRoom() {
   };
 
   const handleEndCall = async () => {
+    setConnected(false);   // ← stops the duration timer immediately
+    if (screenTrackRef.current) { screenTrackRef.current.stop(); screenTrackRef.current = null; }
     _cleanup();
     setMeetingEnded(true);
     if (!isGuest && meetingIdRef.current && token) {
@@ -429,6 +475,8 @@ export default function MeetingRoom() {
                   toggleAudio={toggleMic}
                   endCall={handleEndCall}
                   isSidebarOpen={false}
+                  toggleScreenShare={toggleScreenShare}
+                  isScreenSharing={isScreenSharing}
                 />
               </div>
             </div>
@@ -445,11 +493,13 @@ export default function MeetingRoom() {
             toggleAudio={toggleMic}
             endCall={handleEndCall}
             isSidebarOpen={!!rightPanel}
+            toggleScreenShare={toggleScreenShare}
+            isScreenSharing={isScreenSharing}
           />
         )}
 
         {rightPanel && !isMini && (
-          <div style={{ width: '360px', height: '100%', borderLeft: '1px solid #e0e0e0', background: 'white' }}>
+          <div style={{ width: '300px', flexShrink: 0, height: '100%', borderLeft: '1px solid #ece8f4', background: '#ffffff', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '-2px 0 12px rgba(100,80,200,0.07)' }}>
             {rightPanel === "chat" && (
               <ChatSidebar
                 activeSidebar={rightPanel}

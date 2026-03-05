@@ -1,76 +1,77 @@
 .local-video-container {
-    position: absolute;
-    bottom: 20px;
-    right: 20px;
-  
-    width: 220px;
-    height: 160px;
-  
-    border-radius: 20px;
-    border: 1px solid #ccc;
-  
-   
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    overflow: hidden;
-  
-    border: 1px solid;
-    background: #FFFFFF80;
-    /* background: black; */
-  
-    border-image-source: linear-gradient(135.36deg,
-        rgba(255, 255, 255, 0.8) 15.62%,
-        rgba(255, 255, 255, 0) 36.65%,
-        rgba(255, 255, 255, 0) 64.69%,
-        rgba(255, 255, 255, 0.8) 85.71%);
-  }
-  
-  .video-name-container {
-    position: absolute;
-    top: 8px;
-    left: 8px;
-  
-    padding: 4px 10px;
-    /* small size */
-    border-radius: 12px;
-  
-    background: rgba(202, 41, 41, 0.12);
-    backdrop-filter: blur(6px);
-  
-    color: white;
-    font-size: 12px;
-    font-weight: 500;
-  
-    display: inline-flex;
-    align-items: center;
-  }
-  
-  .video-name-container p {
-    margin: 0;
-  }
-  
-  /* ================= MINI MODE ================= */
-  
-  .mini-local-video {
-    width: 110px;
-    height: 100px;
-    bottom: 10px;
-    right: 10px;
-    border-radius: 14px;
-    top: 210px;
-    /* move to top */
-    right: 10px;
-    /* keep right side */
-    bottom: unset;
-    overflow: hidden;
-  }
-  
-  .mini-video-name {
-    font-size: 10px;
-    padding: 2px 6px;
-    border-radius: 8px;
-  }
-  .video-off {
-    background-color: rgba(13, 14, 12, 0.728) !important;
-  }
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+
+  width: 220px;
+  height: 160px;
+
+  border-radius: 20px;
+  border: 1px solid #ccc;
+
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+
+  border: 1px solid;
+  background: #FFFFFF80;
+  /* background: black; */
+
+  border-image-source: linear-gradient(135.36deg,
+      rgba(255, 255, 255, 0.8) 15.62%,
+      rgba(255, 255, 255, 0) 36.65%,
+      rgba(255, 255, 255, 0) 64.69%,
+      rgba(255, 255, 255, 0.8) 85.71%);
+}
+
+.video-name-container {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+
+  padding: 4px 10px;
+  /* small size */
+  border-radius: 12px;
+
+  background: rgba(202, 41, 41, 0.12);
+  backdrop-filter: blur(6px);
+
+  color: white;
+  font-size: 12px;
+  font-weight: 500;
+
+  display: inline-flex;
+  align-items: center;
+}
+
+.video-name-container p {
+  margin: 0;
+}
+
+/* ================= MINI MODE ================= */
+
+.mini-local-video {
+  width: 110px;
+  height: 100px;
+  bottom: 10px;
+  right: 10px;
+  border-radius: 14px;
+  top: 210px;
+  /* move to top */
+  right: 10px;
+  /* keep right side */
+  bottom: unset;
+  overflow: hidden;
+}
+
+.mini-video-name {
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 8px;
+}
+
+.video-off {
+  background-color: rgba(13, 14, 12, 0.728) !important;
+}

@@ -1,73 +1,86 @@
-import React, { useState } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import './SideBar.css'
 import { IoIosChatboxes } from "react-icons/io";
 import { MdSpeakerNotes } from "react-icons/md";
 import { MdPerson } from "react-icons/md";
 import { AiFillExclamationCircle } from "react-icons/ai";
 import { BsSendFill } from "react-icons/bs";
+
 const ChatSidebar = ({ activeSidebar, setActiveSidebar, messages, onSendMessage, myName }) => {
     const [inputValue, setInputValue] = useState("");
+    const bottomRef = useRef(null);
+
+    // Auto-scroll to latest message
+    useEffect(() => {
+        bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, [messages]);
 
     const handleSend = () => {
         if (inputValue.trim()) {
             onSendMessage(inputValue);
-            setInputValue(""); // Clear input after sending
+            setInputValue("");
         }
     };
+
     return (
         <div className='sidebar-container'>
+            {/* ── Tab Nav ── */}
             <div className='sidebar-nav'>
                 <div className='selected' onClick={() => setActiveSidebar(activeSidebar === "chat" ? null : "chat")}>
-                    <div style={{ marginTop: '3px' }}>
-                        <IoIosChatboxes></IoIosChatboxes>
-                    </div>
-                    <div className='chat'>
-                        Chat
-                    </div>
+                    <IoIosChatboxes />
+                    <span className='chat'>Chat</span>
                 </div>
                 <div className='nselected' onClick={() => setActiveSidebar(activeSidebar === "notes" ? null : "notes")}>
-                    <MdSpeakerNotes></MdSpeakerNotes>
+                    <MdSpeakerNotes />
                 </div>
                 <div className='nselected' onClick={() => setActiveSidebar(activeSidebar === "person" ? null : "person")}>
-                    <MdPerson></MdPerson>
+                    <MdPerson />
                 </div>
                 <div className='nselected' onClick={() => setActiveSidebar(activeSidebar === "alert" ? null : "alert")}>
-                    <AiFillExclamationCircle></AiFillExclamationCircle>
+                    <AiFillExclamationCircle />
                 </div>
             </div>
+
+            {/* ── Messages ── */}
             <div className='sidebar-content'>
-                <div style={{ padding: '16px', height: '60vh', overflowY: 'auto' }}>
-                    {messages.map((msg, index) => (
-                        <div key={index} style={{
-                            marginBottom: '10px',
-                            textAlign: msg.sender === myName ? 'right' : 'left'
-                        }}>
-                            <div style={{ fontSize: '10px', color: '#888' }}>{msg.sender} • {msg.timestamp}</div>
-                            <div style={{
-                                display: 'inline-block',
-                                padding: '8px 12px',
-                                borderRadius: '12px',
-                                background: msg.sender === myName ? '#FFF2EE' : '#FAFAFA',
-                                color: msg.sender === myName ? 'black' : 'black',
-                                marginTop: '4px',
-                                fontSize:'13px'
-                            }}>
+                {messages.length === 0 && (
+                    <p style={{ color: '#bbb', fontSize: 13, textAlign: 'center', marginTop: 24, fontStyle: 'italic' }}>
+                        No messages yet. Say hello!
+                    </p>
+                )}
+                {messages.map((msg, index) => {
+                    const isSelf = msg.sender === myName;
+                    return (
+                        <div key={index} className={`chat-msg-row ${isSelf ? "self" : "other"}`}>
+                            <div className='chat-sender-label'>
+                                {isSelf ? `YOU  ${msg.timestamp}` : `${msg.sender}  ${msg.timestamp}`}
+                            </div>
+                            <div className={`chat-bubble ${isSelf ? "self" : "other"}`}>
                                 {msg.text}
                             </div>
                         </div>
-                    ))}
-                </div>
+                    );
+                })}
+                <div ref={bottomRef} />
             </div>
+
+            {/* ── Input ── */}
             <div className='sidebar-bottom'>
                 <div className='input-box'>
-                    <input type='text' placeholder='Type Message Here..' value={inputValue} onChange={(e) => setInputValue(e.target.value)}  onKeyPress={(e) => e.key === 'Enter' && handleSend()} style={{ border: 'none', background: '#F0F1F2' }}></input>
+                    <input
+                        type='text'
+                        placeholder='Type message here...'
+                        value={inputValue}
+                        onChange={(e) => setInputValue(e.target.value)}
+                        onKeyPress={(e) => e.key === 'Enter' && handleSend()}
+                    />
                     <div className='send' onClick={handleSend}>
-                        <BsSendFill></BsSendFill>
+                        <BsSendFill />
                     </div>
                 </div>
             </div>
         </div>
-    )
+    );
 }
 
 export default ChatSidebar

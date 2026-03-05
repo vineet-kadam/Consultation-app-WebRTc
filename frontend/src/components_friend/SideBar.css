@@ -1,173 +1,307 @@
+/* SideBar.css — Shared styles for all sidebar panels (Chat, Transcript, Info, Appt) */
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700&family=Montserrat:wght@400;500;600;700&display=swap');
+
+/* ══════════════════════════════════════════════════════
+   SIDEBAR CONTAINER
+══════════════════════════════════════════════════════ */
 .sidebar-container {
-    position: relative;
-    margin-top: 16px;
-    right: 5px;
-    z-index: 1000;
-    height: 76%;
-    width: 26%;
-    border-radius: 16px;
-    border-width: 1px;
-    background: #FFFFFF1A;
-    border: 1px solid #F0F1F2;
-    backdrop-filter: blur(32px);
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    width: 100%;
+    background: #ffffff;
+    border-radius: 0;
+    overflow: hidden;
+    font-family: 'Nunito', sans-serif;
 }
 
-
-
+/* ══════════════════════════════════════════════════════
+   NAV / TAB BAR
+══════════════════════════════════════════════════════ */
 .sidebar-nav {
-    width: full;
-    height: 35px;
-    gap: 12px;
-    padding: 16px;
-    border-bottom-width: 1px;
-    background: #F0F1F2;
     display: flex;
-    justify-content: center;
-    border-top-left-radius: 16px;
-    border-top-right-radius: 16px;
+    align-items: center;
+    gap: 4px;
+    padding: 10px 12px;
+    border-bottom: 1px solid #F0F1F2;
+    background: #ffffff;
+    flex-shrink: 0;
+    flex-wrap: wrap;
 }
 
-.sidebar-content {
-    height:60vh;
-    gap: 16px;
-    padding: 16px;
-    background: #FFFFFF;
-    border: 1px solid #F0F1F2;
-    overflow: hidden;
-
-}
-
-.sidebar-bottom {
-    height: 32px;
-    gap: 10px;
-    padding: 16px;
-    border-bottom-right-radius: 12px;
-    border-bottom-left-radius: 12px;
-    background: #FFFFFF;
-    border: 1px solid #F0F1F2;
-}
-
+/* Active (selected) tab — pill with icon + label */
 .selected {
-    width: 100px;
-    height: 20px;
-    border-radius: 12px;
-    gap: 10px;
-    padding: 10px;
-    border-width: 1px;
-    background: #FFFFFF;
-    border: 1px solid #FFFFFF;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border-radius: 20px;
+    background: #ffffff;
+    border: 1.5px solid #E17E61;
     color: #E17E61;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    cursor: pointer;
-    animation: textSlide 1s cubic-bezier(0.22, 1, 0.36, 1) forwards;
-}
-
-.nselected {
-    width: 40px;
-    height: 40px;
-    background: #FFFFFF;
-    border-radius: 12px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    cursor: pointer;
-    
-}
-
-.chat {
-    font-family: Montserrat;
+    font-family: 'Montserrat', sans-serif;
     font-weight: 650;
-    font-style: SemiBold;
-    font-size: 14px;
-    line-height: 100%;
-    letter-spacing: 0%;
-
-    overflow: hidden;
+    font-size: 13px;
+    cursor: pointer;
     white-space: nowrap;
-}
-.chat-text {
-    display: inline-block;
-    transform: translateX(100%);
-    opacity: 0;
-}
-.slide-text {
-    animation: textSlide 0.4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
-}
-@keyframes textSlide {
-    from {
-        transform: translateX(100%);
-        opacity: 0;
-    }
-    to {
-        transform: translateX(0);
-        opacity: 1;
-    }
+    transition: all 0.2s ease;
 }
 
-.input-box {
+.selected:hover {
+    background: #fff5f1;
+}
 
-    height: 40px;
-    border-radius: 16px;
-    gap: 12px;
-    padding-right: 12px;
-    padding-left: 16px;
-    border-width: 1px;
-    background: #F0F1F2;
+/* Inactive tab — icon only */
+.nselected {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
     display: flex;
+    justify-content: center;
+    align-items: center;
+    color: #9E9E9E;
+    font-size: 17px;
+    cursor: pointer;
+    background: transparent;
+    transition: all 0.2s ease;
 }
 
-input:focus {
-    outline: none;
+.nselected:hover {
+    transform: scale(1.12);
+    color: #E17E61;
+    background: #fff5f1;
+    border-radius: 10px;
+}
+
+/* ══════════════════════════════════════════════════════
+   CONTENT AREA (messages / notes / fields)
+══════════════════════════════════════════════════════ */
+.sidebar-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    background: #ffffff;
+}
+
+.sidebar-content::-webkit-scrollbar {
+    width: 4px;
+}
+
+.sidebar-content::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.sidebar-content::-webkit-scrollbar-thumb {
+    background: #e0e0e0;
+    border-radius: 4px;
+}
+
+/* ══════════════════════════════════════════════════════
+   BOTTOM (input row)
+══════════════════════════════════════════════════════ */
+.sidebar-bottom {
+    flex-shrink: 0;
+    padding: 10px 14px 14px;
+    border-top: 1px solid #F0F1F2;
+    background: #ffffff;
+}
+
+/* ── Input box ── */
+.input-box {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: 44px;
+    border-radius: 22px;
+    padding: 0 6px 0 16px;
+    background: #F0F1F2;
+    border: 1px solid #E8E9EA;
+}
+
+.input-box input {
+    flex: 1;
     border: none;
+    background: transparent;
+    font-family: 'Nunito', sans-serif;
+    font-size: 13px;
+    color: #353535;
+    outline: none;
 }
 
+.input-box input::placeholder {
+    color: #b0b0b0;
+}
+
+/* ── Send button ── */
 .send {
-    height: 40px;
-    width: 40px;
-    margin-left: 40px;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: #E17E61;
     display: flex;
     justify-content: center;
     align-items: center;
     cursor: pointer;
-}
-.pname{
-    font-family: Nunito;
-    font-weight: 550;
-    font-style: SemiBold;
+    color: white;
     font-size: 14px;
-    line-height: 18px;
-    letter-spacing: 0%;
-    color: #353535;
-    margin-bottom: 7px;
+    flex-shrink: 0;
+    transition: transform 0.15s ease, background 0.15s;
+}
 
+.send:hover {
+    transform: scale(1.1);
+    background: #d06b50;
 }
-.sname{
-font-family: Nunito;
-font-weight: 400;
-font-style: Regular;
-font-size: 14px;
-line-height: 18px;
-letter-spacing: 0%;
-color: #9E9E9E;
+
+/* ══════════════════════════════════════════════════════
+   CHAT MESSAGE BUBBLES
+══════════════════════════════════════════════════════ */
+.chat-msg-row {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 10px;
 }
+
+.chat-msg-row.self {
+    align-items: flex-end;
+}
+
+.chat-msg-row.other {
+    align-items: flex-start;
+}
+
+.chat-sender-label {
+    font-size: 10px;
+    color: #aaa;
+    margin-bottom: 3px;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+}
+
+.chat-bubble {
+    max-width: 82%;
+    padding: 9px 13px;
+    border-radius: 16px;
+    font-size: 13px;
+    line-height: 1.5;
+    word-break: break-word;
+}
+
+.chat-bubble.self {
+    background: #FFF0EC;
+    color: #2d2d2d;
+    border-bottom-right-radius: 4px;
+}
+
+.chat-bubble.other {
+    background: #F5F5F5;
+    color: #2d2d2d;
+    border-bottom-left-radius: 4px;
+}
+
+/* ══════════════════════════════════════════════════════
+   TRANSCRIPT LINES
+══════════════════════════════════════════════════════ */
+.transcript-line {
+    font-family: 'Nunito', sans-serif;
+    font-weight: 400;
+    font-size: 13px;
+    line-height: 1.6;
+    color: #444;
+    margin-bottom: 10px;
+}
+
+/* ══════════════════════════════════════════════════════
+   INFO / APPT DETAIL FIELDS
+══════════════════════════════════════════════════════ */
+.pname {
+    font-family: 'Nunito', sans-serif;
+    font-weight: 600;
+    font-size: 14px;
+    line-height: 20px;
+    color: #353535;
+    margin-bottom: 6px;
+}
+
+.sname {
+    font-family: 'Nunito', sans-serif;
+    font-weight: 400;
+    font-size: 12px;
+    line-height: 16px;
+    color: #9E9E9E;
+    margin-top: 4px;
+}
+
+/* Info card container */
+.info-card {
+    border-radius: 14px;
+    padding: 14px 16px;
+    background: #FFFFFF;
+    border: 1px solid rgba(226, 227, 229, 0.4);
+    box-shadow: 0 0 6px rgba(0, 0, 0, 0.04);
+    margin-bottom: 12px;
+}
+
+.info-section-title {
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 600;
+    font-size: 13px;
+    color: #353535;
+    margin: 8px 0 6px 2px;
+}
+
+/* External link row */
+.ext-link-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    color: #5A8AEA;
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 600;
+    font-size: 13px;
+    cursor: pointer;
+    margin-bottom: 12px;
+    padding: 8px 0;
+}
+
+.ext-link-row:hover {
+    text-decoration: underline;
+}
+
+/* ══════════════════════════════════════════════════════
+   FLOATING SIDEBAR WRAPPER (used in MeetingRoom)
+══════════════════════════════════════════════════════ */
 .sidebar-wrapper {
     position: fixed;
-    right: 20px;
-    top: 70px;
-    width: 320px;
+    right: 70px;
+    /* leave room for icon strip */
+    top: 60px;
+    width: 300px;
     height: 85vh;
+    border-radius: 16px;
+    overflow: hidden;
+    background: #ffffff;
+    border: 1.5px solid #e8e8f0;
+    box-shadow: 0 4px 24px rgba(100, 80, 200, 0.08), 0 1px 4px rgba(0, 0, 0, 0.06);
+    z-index: 100;
     transition: 0.3s ease;
 }
-.nselected:hover{
-    transform: scale(1.15);
+
+/* ══════════════════════════════════════════════════════
+   CHAT LABEL TEXT (in the tab pill)
+══════════════════════════════════════════════════════ */
+.chat {
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 650;
+    font-size: 13px;
+    line-height: 1;
+    white-space: nowrap;
+    overflow: hidden;
 }
-.transcript-line{
-    font-family: Nunito;
-    font-weight: 400;
-    font-style: Regular;
-    font-size: 14px;
-    line-height: 18px;
-    letter-spacing: 0%;  
+
+.chat-text {
+    display: inline-block;
 }

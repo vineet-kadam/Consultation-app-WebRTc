@@ -66,7 +66,7 @@ TEMPLATES = [
 WSGI_APPLICATION = "medical_consultation.wsgi.application"
 ASGI_APPLICATION  = "medical_consultation.asgi.application"
 
-# ── Database Configuration ───────────────────────────────────────────────────
+# -- Database Configuration ----------------------------------------------------
 DATABASE_TYPE = os.getenv("DATABASE_TYPE", "sqlite").lower()
 
 if DATABASE_TYPE == "postgres":
@@ -92,6 +92,8 @@ else:
         }
     }
 
+AUTH_USER_MODEL = 'consultation.User'
+
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
     {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
@@ -110,14 +112,14 @@ MEDIA_ROOT = BASE_DIR / "media"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-# ── Django Channels ───────────────────────────────────────────────────────────
+# -- Django Channels -----------------------------------------------------------
 CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels.layers.InMemoryChannelLayer"
     }
 }
 
-# ── DRF + JWT ─────────────────────────────────────────────────────────────────
+# -- DRF + JWT -----------------------------------------------------------------
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework_simplejwt.authentication.JWTAuthentication",

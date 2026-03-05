@@ -2,7 +2,6 @@ import traceback
 from datetime import datetime, timedelta
 
 from django.contrib.auth import authenticate
-from django.contrib.auth.models import User
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 
@@ -13,7 +12,7 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from medical_consultation.settings import *          # noqa: F401,F403
-from .models import Clinic, DoctorAvailability, Meeting, UserProfile
+from .models import Clinic, DoctorAvailability, Meeting, User
 from .serializers import (
     DoctorAvailabilitySerializer,
     MeetingSerializer,
@@ -39,10 +38,8 @@ class LoginView(APIView):
                 status=status.HTTP_401_UNAUTHORIZED,
             )
 
-        role = "patient"
-        if hasattr(user, "profile"):
-            role = user.profile.role
-        elif user.is_superuser:
+        role = user.role
+        if user.is_superuser:
             role = "admin"
 
         refresh = RefreshToken.for_user(user)
@@ -102,22 +99,19 @@ class UserCreateView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        valid_roles = [r[0] for r in UserProfile.ROLE_CHOICES]
+        valid_roles = [r[0] for r in User.ROLE_CHOICES]
         if role not in valid_roles:
             return Response(
                 {"error": f"Invalid role. Must be one of: {valid_roles}"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        clinic = Clinic.objects.filter(id=clinic_id).first() if clinic_id else None
         user = User.objects.create_user(
             username=username, password=password,
             first_name=first_name, last_name=last_name, email=email,
-        )
-        clinic = Clinic.objects.filter(id=clinic_id).first() if clinic_id else None
-        UserProfile.objects.create(
-            user=user, role=role, mobile=mobile,
-            date_of_birth=dob or None, sex=sex,
-            clinic=clinic, department=department,
+            role=role, mobile=mobile, date_of_birth=dob or None,
+            sex=sex, clinic=clinic, department=department
         )
         return Response(
             {"id": user.id, "username": user.username,
@@ -131,15 +125,15 @@ class PatientListView(APIView):
 
     def get(self, request):
         clinic_id = request.query_params.get("clinic")
-        qs = User.objects.filter(profile__role="patient").select_related("profile")
+        qs = User.objects.filter(role="patient")
         if clinic_id:
-            qs = qs.filter(profile__clinic_id=clinic_id)
+            qs = qs.filter(clinic_id=clinic_id)
         return Response([{
             "id":        p.id,
             "full_name": p.get_full_name() or p.username,
             "username":  p.username,
             "email":     p.email,
-            "mobile":    getattr(getattr(p, "profile", None), "mobile", "") or "",
+            "mobile":    p.mobile or "",
         } for p in qs])
 
 
@@ -148,18 +142,17 @@ class SalesListView(APIView):
 
     def get(self, request):
         clinic_id = request.query_params.get("clinic")
-        qs = User.objects.filter(profile__role="sales").select_related("profile")
+        qs = User.objects.filter(role="sales")
         if clinic_id:
-            qs = qs.filter(profile__clinic_id=clinic_id)
+            qs = qs.filter(clinic_id=clinic_id)
         result = []
         for s in qs:
-            prof = getattr(s, "profile", None)
             result.append({
                 "id":        s.id,
                 "full_name": s.get_full_name() or s.username,
                 "username":  s.username,
                 "email":     s.email,
-                "clinic":    (prof.clinic.name if (prof and prof.clinic) else ""),
+                "clinic":    (s.clinic.name if s.clinic else ""),
             })
         return Response(result)
 
@@ -215,15 +208,15 @@ class DoctorListView(APIView):
 
     def get(self, request):
         clinic_id = request.query_params.get("clinic")
-        doctors = User.objects.filter(profile__role="doctor").select_related("profile", "profile__clinic")
+        doctors = User.objects.filter(role="doctor").select_related("clinic")
         if clinic_id:
-            doctors = doctors.filter(profile__clinic_id=clinic_id)
+            doctors = doctors.filter(clinic_id=clinic_id)
         return Response([{
             "id":         d.id,
             "full_name":  d.get_full_name() or d.username,
             "username":   d.username,
-            "department": getattr(getattr(d, "profile", None), "department", "") or "",
-            "clinic":     (d.profile.clinic.name if (getattr(d, "profile", None) and d.profile.clinic) else ""),
+            "department": d.department or "",
+            "clinic":     (d.clinic.name if d.clinic else ""),
         } for d in doctors])
 
 
@@ -232,7 +225,11 @@ class DoctorListView(APIView):
 # =============================================================================
 
 class DoctorAvailabilityView(APIView):
-    permission_classes = [AllowAny]
+
+    def get_permissions(self):
+        if self.request.method == "GET":
+            return [AllowAny()]
+        return [IsAuthenticated()]
 
     def get(self, request, doctor_id):
         availability = DoctorAvailability.objects.filter(
@@ -241,35 +238,78 @@ class DoctorAvailabilityView(APIView):
         return Response(DoctorAvailabilitySerializer(availability, many=True).data)
 
     def post(self, request):
-        if not request.user.is_authenticated:
-            return Response(
-                {"error": "Authentication required"},
-                status=status.HTTP_401_UNAUTHORIZED,
-            )
-        if not hasattr(request.user, "profile") or request.user.profile.role != "doctor":
+        # IsAuthenticated already enforced by get_permissions()
+        if request.user.role != "doctor":
             return Response(
                 {"error": "Doctors only"},
                 status=status.HTTP_403_FORBIDDEN,
             )
 
-        clinic_id  = request.data.get("clinic")
-        day        = request.data.get("day_of_week")
-        start_time = request.data.get("start_time")
-        end_time   = request.data.get("end_time")
+        clinic_id_or_name = request.data.get("clinic")
+        day               = request.data.get("day_of_week")
+        start_time        = request.data.get("start_time")
+        end_time          = request.data.get("end_time")
 
-        if clinic_id is None or day is None or not start_time or not end_time:
+        if not clinic_id_or_name or day is None or not start_time or not end_time:
             return Response(
-                {"error": "clinic, day_of_week, start_time, end_time are required"},
+                {"error": "clinic, day_of_week, start_time, and end_time are required"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        clinic = get_object_or_404(Clinic, id=clinic_id)
-        avail, created = DoctorAvailability.objects.update_or_create(
-            doctor=request.user,
-            clinic=clinic,
-            day_of_week=int(day),
-            defaults={"start_time": start_time, "end_time": end_time},
-        )
+        # Robust clinic lookup
+        clinic = None
+        try:
+            # Try by PK
+            clinic = Clinic.objects.get(id=clinic_id_or_name)
+        except (Clinic.DoesNotExist, ValueError, TypeError):
+            try:
+                # Try by Name
+                clinic = Clinic.objects.get(name=clinic_id_or_name)
+            except Clinic.DoesNotExist:
+                # Try by clinic_id string
+                clinic = Clinic.objects.filter(clinic_id=clinic_id_or_name).first()
+
+        if not clinic:
+            return Response({"error": "Clinic not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        # Use manual get/update/create instead of update_or_create to avoid
+        # select_for_update() which causes "database is locked" on concurrent
+        # SQLite writes (e.g. when frontend saves multiple days simultaneously).
+        import time as _time
+        from django.db import transaction as _tx, OperationalError as _OpErr
+
+        last_exc = None
+        for attempt in range(4):          # up to 4 tries
+            try:
+                with _tx.atomic():
+                    existing = DoctorAvailability.objects.filter(
+                        doctor=request.user,
+                        clinic=clinic,
+                        day_of_week=int(day),
+                    ).first()
+                    if existing:
+                        existing.start_time = start_time
+                        existing.end_time   = end_time
+                        existing.save(update_fields=["start_time", "end_time"])
+                        avail   = existing
+                        created = False
+                    else:
+                        avail = DoctorAvailability.objects.create(
+                            doctor=request.user, clinic=clinic,
+                            day_of_week=int(day),
+                            start_time=start_time, end_time=end_time,
+                        )
+                        created = True
+                break                     # success — exit retry loop
+            except _OpErr as e:
+                last_exc = e
+                _time.sleep(0.25)         # wait 250 ms then retry
+        else:
+            return Response(
+                {"error": "Database busy — please try again."},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+
         return Response(
             DoctorAvailabilitySerializer(avail).data,
             status=status.HTTP_201_CREATED if created else status.HTTP_200_OK,
@@ -304,13 +344,30 @@ class DoctorAvailabilityCheckView(APIView):
         now_local = timezone.localtime(timezone.now())
         today    = now_local.weekday()
         cur_time = now_local.time()
-        return DoctorAvailability.objects.filter(
+
+        # Check 1: Explicit working hours
+        is_in_hours = DoctorAvailability.objects.filter(
             doctor_id=doctor_id,
             clinic__isnull=False,
             day_of_week=today,
             start_time__lte=cur_time,
             end_time__gte=cur_time,
         ).exists()
+        if is_in_hours:
+            return True
+
+        # Check 2: Active or upcoming meeting
+        # If the doctor has a meeting starting soon or ongoing, consider them available
+        start_buffer = now_local + timedelta(minutes=15)
+        end_buffer   = now_local - timedelta(minutes=60) # Assume 1h max
+        has_meeting = Meeting.objects.filter(
+            doctor_id=doctor_id,
+            status__in=["scheduled", "started"],
+            scheduled_time__lte=start_buffer,
+            scheduled_time__gte=end_buffer
+        ).exists()
+
+        return has_meeting
 
 
 class DoctorAvailableSlotsView(APIView):
@@ -376,8 +433,7 @@ class SalesAvailabilityView(APIView):
                 {"error": "Authentication required"},
                 status=status.HTTP_401_UNAUTHORIZED,
             )
-        role = getattr(getattr(request.user, "profile", None), "role", None)
-        if role != "sales":
+        if request.user.role != "sales":
             return Response(
                 {"error": "Sales representatives only"},
                 status=status.HTTP_403_FORBIDDEN,
@@ -453,9 +509,9 @@ class SalesAvailableSlotsView(APIView):
 # DOUBLE-BOOKING GUARD
 # =============================================================================
 
-def _check_double_booking(target_user, sched_time_str, field="doctor"):
+def _check_double_booking(target_user, sched_time, field="doctor"):
     qs = Meeting.objects.filter(
-        scheduled_time=sched_time_str,
+        scheduled_time=sched_time,
         status__in=["scheduled", "started"],
     )
     if field == "doctor":
@@ -477,7 +533,7 @@ class MeetingBookView(APIView):
             appt_type    = request.data.get("appointment_type", "consultation")
             is_sales_mtg = (appt_type == "sales_meeting")
 
-            # ── Clinic lookup ──────────────────────────────────────────────
+            # -- Clinic lookup ----------------------------------------------
             clinic_name_or_id = request.data.get("clinic")
             clinic_id = None
             if clinic_name_or_id:
@@ -491,7 +547,7 @@ class MeetingBookView(APIView):
                     except Clinic.DoesNotExist:
                         clinic_id = None
 
-            # ── Doctor lookup (frontend sends { username, id }) ────────────
+            # -- Doctor lookup (frontend sends { username, id }) ------------
             doctor_data = request.data.get("doctor")
             doctor_id   = None
             if doctor_data:
@@ -507,7 +563,7 @@ class MeetingBookView(APIView):
                 elif isinstance(doctor_data, int):
                     doctor_id = doctor_data
 
-            # ── Other fields ───────────────────────────────────────────────
+            # -- Other fields ---------------------------------------------- 
             sales_id = request.data.get("sales_id")
 
             # FIX: read appointment_reason from top-level key (not nested dict)
@@ -542,29 +598,61 @@ class MeetingBookView(APIView):
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
-            caller_role = getattr(getattr(request.user, "profile", None), "role", None)
+            caller_role = request.user.role
 
-            # ── Determine patient & optional sales user ────────────────────
+            # -- Date Shift Fix / Timezone Awareness ------------------------
+            try:
+                sched_dt = datetime.fromisoformat(sched_time)
+                if timezone.is_naive(sched_dt):
+                    # Interpret naive time from frontend as local (Asia/Kolkata)
+                    sched_dt = timezone.make_aware(sched_dt, timezone.get_current_timezone())
+            except (ValueError, TypeError):
+                return Response({"error": f"Invalid date/time format: {sched_time}"}, status=status.HTTP_400_BAD_REQUEST)
+
+            day_of_week = sched_dt.weekday()
+            slot_time   = sched_dt.time()
+
+            # -- Determine patient & optional sales user --------------------
+            patient = None
+            sales_user = None
+
             if caller_role == "sales":
                 sales_user   = request.user
                 patient_data = request.data.get("patient")
-                patient_id   = create_patient(patient_data).id if patient_data else None
-                if not patient_id:
-                    return Response(
-                        {"error": "patient_id is required when booking as sales"},
-                        status=status.HTTP_400_BAD_REQUEST,
-                    )
-                patient = get_object_or_404(User, id=patient_id, profile__role="patient")
+                # patient_data might be an ID or a dict
+                if isinstance(patient_data, dict):
+                    patient = create_patient(patient_data)
+                elif patient_data:
+                    patient = get_object_or_404(User, id=patient_data)
+                
+                if not patient:
+                    return Response({"error": "Patient is required for sales booking"}, status=status.HTTP_400_BAD_REQUEST)
+
+            elif caller_role == "doctor":
+                # DOCTOR BOOKING FOR PATIENT
+                patient_data = request.data.get("patient")
+                if isinstance(patient_data, dict):
+                    patient = create_patient(patient_data)
+                elif patient_data:
+                    # In case doctor sends just patient ID
+                    patient = get_object_or_404(User, id=patient_data)
+                
+                if not patient:
+                    return Response({"error": "Patient is required for doctor booking"}, status=status.HTTP_400_BAD_REQUEST)
+                
+                # If doctor is booking, they are the 'doctor' for the meeting
+                if not doctor_id:
+                    doctor_id = request.user.id
             else:
-                patient    = request.user
-                sales_user = None
+                # PATIENT BOOKING THEMSELVES
+                patient = request.user
                 if sales_id:
                     try:
-                        sales_user = User.objects.get(id=sales_id, profile__role="sales")
+                        sales_user = User.objects.get(id=sales_id, role="sales")
                     except User.DoesNotExist:
                         pass
 
-            # ── SALES MEETING ──────────────────────────────────────────────
+            # -- SALES MEETING ----------------------------------------------
             if is_sales_mtg:
                 if not sales_user:
                     return Response(
@@ -572,15 +660,11 @@ class MeetingBookView(APIView):
                         status=status.HTTP_400_BAD_REQUEST,
                     )
 
-                sched_dt    = datetime.fromisoformat(sched_time)
-                day_of_week = sched_dt.weekday()
-                slot_time   = sched_dt.time()
-
                 # SOFT validation: only check if availability rows exist
                 any_avail = DoctorAvailability.objects.filter(
                     doctor=sales_user, clinic__isnull=True,
                 ).exists()
-                if any_avail:
+                if any_avail and caller_role != "doctor":
                     slot_ok = DoctorAvailability.objects.filter(
                         doctor=sales_user,
                         clinic__isnull=True,
@@ -596,7 +680,7 @@ class MeetingBookView(APIView):
                             )
                         }, status=status.HTTP_400_BAD_REQUEST)
 
-                if _check_double_booking(sales_user, sched_time, field="sales"):
+                if _check_double_booking(sales_user, sched_dt, field="sales"):
                     return Response(
                         {"error": f"{sales_user.get_full_name()} already has a meeting at this time."},
                         status=status.HTTP_400_BAD_REQUEST,
@@ -610,7 +694,7 @@ class MeetingBookView(APIView):
                 ]
                 meeting = Meeting.objects.create(
                     meeting_type=meeting_type, appointment_type=appt_type,
-                    scheduled_time=sched_time, duration=duration,
+                    scheduled_time=sched_dt, duration=duration,
                     participants=participants, patient=patient,
                     doctor=None, sales=sales_user, clinic=None,
                     appointment_reason=reason, department=department,
@@ -619,11 +703,11 @@ class MeetingBookView(APIView):
                 return Response({
                     "meeting_id":     meeting.meeting_id,
                     "room_id":        meeting.room_id,
-                    "scheduled_time": str(meeting.scheduled_time),
+                    "scheduled_time": meeting.scheduled_time.isoformat(),
                     "status":         meeting.status,
                 }, status=status.HTTP_201_CREATED)
 
-            # ── CONSULTATION ───────────────────────────────────────────────
+            # -- CONSULTATION ---------------------------------------------- 
             if not clinic_id or not doctor_id:
                 return Response(
                     {"error": "clinic and doctor are required for consultations"},
@@ -636,7 +720,8 @@ class MeetingBookView(APIView):
             if caller_role == "sales":
                 appt_type = "consultation"
 
-            sched_dt    = datetime.fromisoformat(sched_time)
+            # Re-use the timezone-aware sched_dt already computed above (lines 572-576)
+            # Do NOT re-parse sched_time naively here — that loses timezone and shifts the day
             day_of_week = sched_dt.weekday()
             slot_time   = sched_dt.time()
 
@@ -645,7 +730,7 @@ class MeetingBookView(APIView):
             any_avail = DoctorAvailability.objects.filter(
                 doctor=doctor, clinic=clinic,
             ).exists()
-            if any_avail:
+            if any_avail and caller_role != "doctor":
                 slot_ok = DoctorAvailability.objects.filter(
                     doctor=doctor, clinic=clinic,
                     day_of_week=day_of_week,
@@ -660,7 +745,7 @@ class MeetingBookView(APIView):
                         )
                     }, status=status.HTTP_400_BAD_REQUEST)
 
-            if _check_double_booking(doctor, sched_time, field="doctor"):
+            if _check_double_booking(doctor, sched_dt, field="doctor"):
                 return Response(
                     {"error": f"Dr. {doctor.get_full_name()} already has an appointment at this time."},
                     status=status.HTTP_400_BAD_REQUEST,
@@ -681,7 +766,7 @@ class MeetingBookView(APIView):
 
             meeting = Meeting.objects.create(
                 meeting_type=meeting_type, appointment_type=appt_type,
-                scheduled_time=sched_time, duration=duration,
+                scheduled_time=sched_dt, duration=duration,
                 participants=participants, patient=patient,
                 doctor=doctor, sales=sales_user, clinic=clinic,
                 appointment_reason=reason, department=department,
@@ -690,7 +775,7 @@ class MeetingBookView(APIView):
             return Response({
                 "meeting_id":     meeting.meeting_id,
                 "room_id":        meeting.room_id,
-                "scheduled_time": str(meeting.scheduled_time),
+                "scheduled_time": meeting.scheduled_time.isoformat(),
                 "status":         meeting.status,
             }, status=status.HTTP_201_CREATED)
 

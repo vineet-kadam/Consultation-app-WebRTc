@@ -1,47 +1,34 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
-from django.contrib.auth.models import User
-from .models import UserProfile, Clinic, DoctorAvailability, Meeting
+from .models import User, Clinic, DoctorAvailability, Meeting
+
 
 # =============================================================================
-# 1. USER PROFILE EXTENSION
+# 1. CUSTOM USER ADMIN
 # =============================================================================
 
-class UserProfileInline(admin.StackedInline):
-    """
-    Allows editing UserProfile data (Role, Clinic, etc.) directly inside the 
-    standard Django User admin page.
-    """
-    model = UserProfile
-    can_delete = False
-    verbose_name_plural = 'User Profile'
-    fk_name = 'user'
-
+@admin.register(User)
 class UserAdmin(BaseUserAdmin):
     """
-    Re-register the User admin to include the profile inline.
+    Custom UserAdmin to handle our extra fields.
     """
-    inlines = (UserProfileInline,)
-    list_display = ('username', 'email', 'first_name', 'last_name', 'get_role', 'is_staff')
-    
-    def get_role(self, obj):
-        # Safe access in case profile doesn't exist for some legacy users
-        return obj.profile.role if hasattr(obj, 'profile') else '-'
-    get_role.short_description = 'Role'
-
-# Unregister the default User admin and register our customized version
-admin.site.unregister(User)
-admin.site.register(User, UserAdmin)
-
-@admin.register(UserProfile)
-class UserProfileAdmin(admin.ModelAdmin):
-    """
-    Standalone view for UserProfiles if needed.
-    """
-    list_display = ('user', 'role', 'clinic', 'mobile', 'sex')
-    list_filter = ('role', 'sex', 'clinic')
-    search_fields = ('user__username', 'user__email', 'mobile')
-    autocomplete_fields = ['user', 'clinic']
+    fieldsets = BaseUserAdmin.fieldsets + (
+        ('Profile Information', {
+            'fields': ('role', 'clinic', 'mobile', 'date_of_birth', 'sex', 'department', 'photo')
+        }),
+    )
+    add_fieldsets = BaseUserAdmin.add_fieldsets + (
+        ('Profile Information', {
+            'fields': (
+                'role', 'clinic', 'mobile', 'date_of_birth', 'sex', 'department', 'photo',
+                'first_name', 'last_name', 'email'
+            )
+        }),
+    )
+    list_display = ('username', 'email', 'first_name', 'last_name', 'role', 'clinic', 'is_staff')
+    list_filter  = ('role', 'clinic', 'sex', 'is_staff', 'is_superuser', 'is_active')
+    search_fields = ('username', 'email', 'first_name', 'last_name', 'mobile')
+    ordering = ('username',)
 
 
 # =============================================================================
@@ -56,6 +43,7 @@ class DoctorAvailabilityInline(admin.TabularInline):
     extra = 1
     autocomplete_fields = ['doctor']
 
+
 @admin.register(Clinic)
 class ClinicAdmin(admin.ModelAdmin):
     list_display = ('name', 'clinic_id', 'member_count')
@@ -65,6 +53,7 @@ class ClinicAdmin(admin.ModelAdmin):
     def member_count(self, obj):
         return obj.members.count()
     member_count.short_description = 'Total Members'
+
 
 @admin.register(DoctorAvailability)
 class DoctorAvailabilityAdmin(admin.ModelAdmin):
@@ -85,22 +74,22 @@ class DoctorAvailabilityAdmin(admin.ModelAdmin):
 @admin.register(Meeting)
 class MeetingAdmin(admin.ModelAdmin):
     list_display = (
-        'meeting_id', 
+        'meeting_id',
         'scheduled_time',
-        'get_patient', 
-        'get_doctor', 
-        'appointment_type', 
+        'get_patient',
+        'get_doctor',
+        'appointment_type',
         'status'
     )
     list_filter = (
-        'status', 
-        'meeting_type', 
-        'appointment_type', 
-        'clinic', 
+        'status',
+        'meeting_type',
+        'appointment_type',
+        'clinic',
         'scheduled_time'
     )
     search_fields = (
-        'room_id', 
+        'room_id',
         'patient__username', 'patient__email', 'patient__first_name',
         'doctor__username', 'doctor__first_name',
         'appointment_reason'

@@ -1,54 +1,29 @@
 # consultation/serializers.py
 
 from rest_framework import serializers
-from django.contrib.auth.models import User
-from .models import Meeting, UserProfile, DoctorAvailability
+from .models import Meeting, User, DoctorAvailability
 
 
 class UserSerializer(serializers.ModelSerializer):
-    role         = serializers.SerializerMethodField()
-    full_name    = serializers.SerializerMethodField()
-    mobile       = serializers.SerializerMethodField()
-    date_of_birth = serializers.SerializerMethodField()
-    sex          = serializers.SerializerMethodField()
-    department   = serializers.SerializerMethodField()
-    clinic       = serializers.SerializerMethodField()
+    full_name     = serializers.SerializerMethodField()
+    clinic_detail = serializers.SerializerMethodField()
 
     class Meta:
         model  = User
         fields = [
             'id', 'username', 'email', 'first_name', 'last_name',
             'full_name', 'role', 'mobile', 'date_of_birth', 'sex',
-            'department', 'clinic',
+            'department', 'clinic', 'clinic_detail'
         ]
-
-    def _profile(self, obj):
-        return getattr(obj, 'profile', None)
-
-    def get_role(self, obj):
-        return getattr(self._profile(obj), 'role', 'patient')
 
     def get_full_name(self, obj):
         return obj.get_full_name() or obj.username
 
-    def get_mobile(self, obj):
-        return getattr(self._profile(obj), 'mobile', '') or ''
-
-    def get_date_of_birth(self, obj):
-        dob = getattr(self._profile(obj), 'date_of_birth', None)
-        return str(dob) if dob else ''
-
-    def get_sex(self, obj):
-        return getattr(self._profile(obj), 'sex', '') or ''
-
-    def get_department(self, obj):
-        return getattr(self._profile(obj), 'department', '') or ''
-
-    def get_clinic(self, obj):
-        p = self._profile(obj)
-        if p and p.clinic:
-            return {'id': p.clinic.id, 'name': p.clinic.name}
+    def get_clinic_detail(self, obj):
+        if obj.clinic:
+            return {'id': obj.clinic.id, 'name': obj.clinic.name}
         return None
+
 
 
 class MeetingSerializer(serializers.ModelSerializer):
@@ -69,28 +44,28 @@ class MeetingSerializer(serializers.ModelSerializer):
     class Meta:
         model  = Meeting
         fields = [
-            # ── identifiers ──────────────────────────────────────────────
+            # -- identifiers ----------------------------------------------
             'meeting_id',
             'room_id',
-            # ── scheduling ───────────────────────────────────────────────
+            # -- scheduling ---------------------------------------------- 
             'scheduled_time',
             'duration',
             'status',
-            # ── appointment meta ─────────────────────────────────────────
+            # -- appointment meta ---------------------------------------- 
             'appointment_type',
             'meeting_type',
             'appointment_reason',
             'department',
             'remark',
-            # ── transcript ───────────────────────────────────────────────
+            # -- transcript ---------------------------------------------- 
             'speech_to_text',
-            # ── participants JSON (stores sex/mobile/dob/email per role) ─
+            # -- participants JSON (stores sex/mobile/dob/email per role)  
             'participants',
-            # ── FK objects ───────────────────────────────────────────────
+            # -- FK objects ---------------------------------------------- 
             'patient',
             'doctor',
             'sales',
-            # ── computed names ───────────────────────────────────────────
+            # -- computed names ------------------------------------------ 
             'patient_name',
             'doctor_name',
             'sales_name',

@@ -17,9 +17,9 @@ except Exception:
     _WS_MAJOR = 10
 
 _HEADERS_KWARG = "additional_headers" if _WS_MAJOR >= 14 else "extra_headers"
-print(f"ℹ️  websockets {websockets.__version__}  ->  header kwarg = '{_HEADERS_KWARG}'")
+print(f"(INFO) websockets {websockets.__version__}  ->  header kwarg = '{_HEADERS_KWARG}'")
 
-# Use nova-2 (general) for ALL roles — endpointing=200 for faster flushes
+# Use nova-2 (general) for ALL roles - endpointing=200 for faster flushes
 DEEPGRAM_URI_GENERAL = (
     "wss://api.deepgram.com/v1/listen"
     "?model=nova-2"
@@ -43,7 +43,7 @@ _room_peers: dict = {}
 
 
 # =============================================================================
-# 1. CallConsumer — WebRTC signalling + in-room chat + REAL-TIME TRANSCRIPT
+# 1. CallConsumer - WebRTC signalling + in-room chat + REAL-TIME TRANSCRIPT
 # =============================================================================
 
 class CallConsumer(AsyncWebsocketConsumer):
@@ -60,7 +60,7 @@ class CallConsumer(AsyncWebsocketConsumer):
 
         await self.channel_layer.group_add(self.room_group_name, self.channel_name)
         await self.accept()
-        print(f"✅ [Call] peer={self.peer_id} connected  room={self.room_name}")
+        print(f"OK [Call] peer={self.peer_id} connected  room={self.room_name}")
 
     async def disconnect(self, close_code):
         room = _room_peers.get(self.room_name, {})
@@ -74,7 +74,7 @@ class CallConsumer(AsyncWebsocketConsumer):
             },
         )
         await self.channel_layer.group_discard(self.room_group_name, self.channel_name)
-        print(f"❌ [Call] peer={self.peer_id} left  room={self.room_name}  code={close_code}")
+        print(f"ERR [Call] peer={self.peer_id} left  room={self.room_name}  code={close_code}")
 
     async def receive(self, text_data):
         try:
@@ -84,7 +84,7 @@ class CallConsumer(AsyncWebsocketConsumer):
 
         msg_type = data.get("type")
 
-        # ── join ──────────────────────────────────────────────────────────────
+        # -- join --------------------------------------------------------------
         if msg_type == "join":
             self.peer_name = data.get("name", "Participant")
             self.peer_role = data.get("role", "participant")
@@ -117,12 +117,12 @@ class CallConsumer(AsyncWebsocketConsumer):
                 },
             )
             print(
-                f"📋 [Call] {self.peer_name} ({self.peer_role}) joined "
+                f"INFO [Call] {self.peer_name} ({self.peer_role}) joined "
                 f"room={self.room_name}  peers={len(room)}"
             )
             return
 
-        # ── WebRTC signalling ─────────────────────────────────────────────────
+        # -- WebRTC signalling ------------------------------------------------ 
         if msg_type in ("offer", "answer", "ice"):
             to_id  = data.get("to")
             room   = _room_peers.get(self.room_name, {})
@@ -142,7 +142,7 @@ class CallConsumer(AsyncWebsocketConsumer):
             )
             return
 
-        # ── in-room chat ──────────────────────────────────────────────────────
+        # -- in-room chat ------------------------------------------------------
         if msg_type == "chat":
             await self.channel_layer.group_send(
                 self.room_group_name,
@@ -161,14 +161,14 @@ class CallConsumer(AsyncWebsocketConsumer):
             )
             return
 
-        # ── REAL-TIME TRANSCRIPT BROADCAST ───────────────────────────────────
+        # -- REAL-TIME TRANSCRIPT BROADCAST ---------------------------------- 
         # Sender already updated its own UI locally; broadcast to everyone else.
         if msg_type == "transcript_line":
             text = str(data.get("text", "")).strip()
             if not text:
                 return
             print(
-                f"📝 [Transcript] {self.peer_name} ({self.peer_role}) → "
+                f"LOG [Transcript] {self.peer_name} ({self.peer_role}) -> "
                 f"room={self.room_name}: {text[:80]}"
             )
             await self.channel_layer.group_send(
@@ -199,7 +199,7 @@ class CallConsumer(AsyncWebsocketConsumer):
 
 
 # =============================================================================
-# 2. _BaseSTTConsumer — shared machinery for two-speaker STT consumers
+# 2. _BaseSTTConsumer - shared machinery for two-speaker STT consumers
 # =============================================================================
 
 class _BaseSTTConsumer(AsyncWebsocketConsumer):
@@ -209,7 +209,7 @@ class _BaseSTTConsumer(AsyncWebsocketConsumer):
 
     async def connect(self):
         await self.accept()
-        print(f"✅ [{self.LOG_TAG}] client accepted")
+        print(f"OK [{self.LOG_TAG}] client accepted")
         self.dg_a     = None
         self.dg_b     = None
         self.buf_a    = []
@@ -220,7 +220,7 @@ class _BaseSTTConsumer(AsyncWebsocketConsumer):
         self._tasks.append(asyncio.ensure_future(self._init_deepgram()))
 
     async def disconnect(self, close_code):
-        print(f"❌ [{self.LOG_TAG}] disconnected  code={close_code}")
+        print(f"ERR [{self.LOG_TAG}] disconnected  code={close_code}")
         self._closing = True
         for t in self._tasks:
             if not t.done():
@@ -282,10 +282,10 @@ class _BaseSTTConsumer(AsyncWebsocketConsumer):
 
     async def _init_deepgram(self):
         try:
-            print(f"🔌 [{self.LOG_TAG}] Connecting to Deepgram (2 connections)…")
+            print(f"START [{self.LOG_TAG}] Connecting to Deepgram (2 connections)...")
             try:
                 self.dg_a = await asyncio.wait_for(self._open_deepgram(), timeout=20.0)
-                print(f"✅ [{self.LOG_TAG}] {self.LABEL_A} connection established")
+                print(f"OK [{self.LOG_TAG}] {self.LABEL_A} connection established")
             except Exception as e:
                 await self.send(json.dumps({
                     "type": "stt_error",
@@ -294,7 +294,7 @@ class _BaseSTTConsumer(AsyncWebsocketConsumer):
                 return
             try:
                 self.dg_b = await asyncio.wait_for(self._open_deepgram(), timeout=20.0)
-                print(f"✅ [{self.LOG_TAG}] {self.LABEL_B} connection established")
+                print(f"OK [{self.LOG_TAG}] {self.LABEL_B} connection established")
             except Exception as e:
                 await self.send(json.dumps({
                     "type": "stt_error",
@@ -303,7 +303,7 @@ class _BaseSTTConsumer(AsyncWebsocketConsumer):
                 return
 
             self.dg_ready = True
-            print(f"✅ [{self.LOG_TAG}] Both Deepgram connections open")
+            print(f"OK [{self.LOG_TAG}] Both Deepgram connections open")
 
             for chunk in self.buf_a:
                 try:    await self.dg_a.send(chunk)
@@ -324,7 +324,7 @@ class _BaseSTTConsumer(AsyncWebsocketConsumer):
         except asyncio.CancelledError:
             pass
         except Exception as exc:
-            print(f"❌ [{self.LOG_TAG}] init error: {exc}")
+            print(f"[ERR] [{self.LOG_TAG}] init error: {exc}")
             try:
                 await self.send(json.dumps({"type": "stt_error", "message": str(exc)}))
             except Exception:
@@ -360,7 +360,7 @@ class _BaseSTTConsumer(AsyncWebsocketConsumer):
                         }))
                         if is_final:
                             print(
-                                f"📝 [{self.LOG_TAG}] [{label}] FINAL: {text[:70]}"
+                                f"LOG [{self.LOG_TAG}] [{label}] FINAL: {text[:70]}"
                             )
                 if self._closing:
                     break
@@ -371,8 +371,8 @@ class _BaseSTTConsumer(AsyncWebsocketConsumer):
                 if self._closing:
                     break
                 print(
-                    f"⚠️  [{self.LOG_TAG}] [{label}] dropped "
-                    f"({str(exc)[:60]}) — reconnecting in 1 s…"
+                    f"WRN [{self.LOG_TAG}] [{label}] dropped "
+                    f"({str(exc)[:60]}) - reconnecting in 1 s..."
                 )
                 await asyncio.sleep(1)
                 try:
@@ -381,40 +381,40 @@ class _BaseSTTConsumer(AsyncWebsocketConsumer):
                         self.dg_a = new_ws
                     else:
                         self.dg_b = new_ws
-                    print(f"✅ [{self.LOG_TAG}] [{label}] reconnected")
+                    print(f"OK [{self.LOG_TAG}] [{label}] reconnected")
                 except Exception as re_err:
                     print(
-                        f"❌ [{self.LOG_TAG}] [{label}] reconnect failed: "
-                        f"{re_err} — retrying in 3 s"
+                        f"ERR [{self.LOG_TAG}] [{label}] reconnect failed: "
+                        f"{re_err} - retrying in 3 s"
                     )
                     await asyncio.sleep(3)
 
 
 # =============================================================================
-# 3–5. Concrete two-speaker STT consumers
+# 3-5. Concrete two-speaker STT consumers
 # =============================================================================
 
 class STTConsumer(_BaseSTTConsumer):
-    """Doctor + Patient  →  ws/stt/"""
+    """Doctor + Patient  ->  ws/stt/"""
     LABEL_A = "Doctor"
     LABEL_B = "Patient"
     LOG_TAG  = "STT"
 
 class STTConsumerSales(_BaseSTTConsumer):
-    """Agent + Client  →  ws/stt/sales/"""
+    """Agent + Client  ->  ws/stt/sales/"""
     LABEL_A = "Agent"
     LABEL_B = "Client"
     LOG_TAG  = "STT-Sales"
 
 class STTConsumerAdmin(_BaseSTTConsumer):
-    """Admin + Participant  →  ws/stt/admin/"""
+    """Admin + Participant  ->  ws/stt/admin/"""
     LABEL_A = "Admin"
     LABEL_B = "Participant"
     LOG_TAG  = "STT-Admin"
 
 
 # =============================================================================
-# 6. STTConsumerRoom — one Deepgram connection per participant tab
+# 6. STTConsumerRoom - one Deepgram connection per participant tab
 #    URL: ws/stt/room/?role=doctor&name=Dr+Smith
 # =============================================================================
 
@@ -434,12 +434,12 @@ class STTConsumerRoom(AsyncWebsocketConsumer):
         self.label = f"{role.capitalize()} ({name})" if name else role.capitalize()
         self.log   = f"STT-Room[{role}]"
 
-        # All roles use nova-2 general — nova-2-medical silently drops audio
+        # All roles use nova-2 general - nova-2-medical silently drops audio
         self.deepgram_uri = DEEPGRAM_URI_GENERAL
-        print(f"🎙 [{self.log}] nova-2 general — speaker: {self.label}")
+        print(f"START [{self.log}] nova-2 general - speaker: {self.label}")
 
         await self.accept()
-        print(f"✅ [{self.log}] client accepted")
+        print(f"OK [{self.log}] client accepted")
 
         self.dg       = None
         self.buf      = []
@@ -450,7 +450,7 @@ class STTConsumerRoom(AsyncWebsocketConsumer):
         self._tasks.append(asyncio.ensure_future(self._init()))
 
     async def disconnect(self, close_code):
-        print(f"❌ [{self.log}] disconnected  code={close_code}")
+        print(f"ERR [{self.log}] disconnected  code={close_code}")
         self._closing = True
         for t in self._tasks:
             if not t.done():
@@ -505,10 +505,10 @@ class STTConsumerRoom(AsyncWebsocketConsumer):
 
     async def _init(self):
         try:
-            print(f"🔌 [{self.log}] Connecting to Deepgram…")
+            print(f"START [{self.log}] Connecting to Deepgram...")
             try:
                 self.dg = await asyncio.wait_for(self._open_deepgram(), timeout=20.0)
-                print(f"✅ [{self.log}] Connected to Deepgram")
+                print(f"OK [{self.log}] Connected to Deepgram")
             except asyncio.TimeoutError:
                 await self.send(json.dumps({
                     "type"   : "stt_error",
@@ -571,7 +571,7 @@ class STTConsumerRoom(AsyncWebsocketConsumer):
                         }))
                         if is_final:
                             print(
-                                f"📝 [{self.log}] FINAL: {text[:70]}"
+                                f"LOG [{self.log}] FINAL: {text[:70]}"
                             )
                 if self._closing:
                     break
@@ -582,16 +582,16 @@ class STTConsumerRoom(AsyncWebsocketConsumer):
                 if self._closing:
                     break
                 print(
-                    f"⚠️  [{self.log}] dropped ({str(exc)[:60]}) "
-                    f"— reconnecting in 1 s…"
+                    f"WRN [{self.log}] dropped ({str(exc)[:60]}) "
+                    f"- reconnecting in 1 s..."
                 )
                 await asyncio.sleep(1)
                 try:
                     self.dg = await asyncio.wait_for(self._open_deepgram(), timeout=20.0)
-                    print(f"✅ [{self.log}] reconnected")
+                    print(f"OK [{self.log}] reconnected")
                 except asyncio.TimeoutError:
-                    print(f"❌ [{self.log}] reconnect timeout — retrying in 3 s")
+                    print(f"ERR [{self.log}] reconnect timeout - retrying in 3 s")
                     await asyncio.sleep(3)
                 except Exception as re_err:
-                    print(f"❌ [{self.log}] reconnect failed: {re_err} — retrying in 3 s")
+                    print(f"ERR [{self.log}] reconnect failed: {re_err} - retrying in 3 s")
                     await asyncio.sleep(3)  

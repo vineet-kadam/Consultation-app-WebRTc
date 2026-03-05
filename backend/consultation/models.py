@@ -1,9 +1,9 @@
 import uuid
 from django.db import models
-from django.contrib.auth.models import User
+from django.contrib.auth.models import AbstractUser
 
 
-class UserProfile(models.Model):
+class User(AbstractUser):
     ROLE_CHOICES = [
         ("admin",   "Admin"),
         ("doctor",  "Doctor"),
@@ -16,7 +16,6 @@ class UserProfile(models.Model):
         ("O", "Other / Prefer not to say"),
     ]
 
-    user          = models.OneToOneField(User, on_delete=models.CASCADE, related_name="profile")
     role          = models.CharField(max_length=10, choices=ROLE_CHOICES, default="patient")
     date_of_birth = models.DateField(null=True, blank=True)
     sex           = models.CharField(max_length=1, choices=SEX_CHOICES, null=True, blank=True)
@@ -29,7 +28,7 @@ class UserProfile(models.Model):
     )
 
     def __str__(self):
-        return f"{self.user.get_full_name() or self.user.username} ({self.role})"
+        return f"{self.get_full_name() or self.username} ({self.role})"
 
 
 class Clinic(models.Model):
@@ -71,7 +70,7 @@ class DoctorAvailability(models.Model):
         clinic_str = self.clinic.name if self.clinic else "Sales (no clinic)"
         return (
             f"{self.doctor.get_full_name()} @ {clinic_str} "
-            f"— {self.get_day_of_week_display()} {self.start_time}–{self.end_time}"
+            f"- {self.get_day_of_week_display()} {self.start_time}-{self.end_time}"
         )
 
 
@@ -127,6 +126,6 @@ class Meeting(models.Model):
         patient_name = self.patient.get_full_name() if self.patient else "Unknown"
         if self.appointment_type == "sales_meeting":
             sales_name = self.sales.get_full_name() if self.sales else "Unknown"
-            return f"SalesMeeting {self.meeting_id}: {patient_name} ↔ {sales_name} @ {self.scheduled_time}"
+            return f"SalesMeeting {self.meeting_id}: {patient_name}   {sales_name} @ {self.scheduled_time}"
         doctor_name = self.doctor.get_full_name() if self.doctor else "Unknown"
         return f"Meeting {self.meeting_id}: {patient_name} with Dr.{doctor_name} @ {self.scheduled_time}"

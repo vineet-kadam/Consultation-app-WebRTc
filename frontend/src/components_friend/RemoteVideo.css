@@ -1,6 +1,6 @@
 .container {
-    width: 89%;
-    /* width: 55vw; */
+    width: calc(100% - 80px);
+    /* leaves 80px on right for the fixed sidebar */
     height: 81vh;
     border-radius: 20px;
     gap: 40px;
@@ -14,10 +14,12 @@
     justify-content: center;
     align-items: center;
 }
+
 .container.sidebar-active {
-    width: 69.8%; 
+    width: 69.8%;
 }
-.p-container{
+
+.p-container {
     width: 70vw;
     height: 84vh;
     border-radius: 20px;
@@ -47,24 +49,17 @@
 }
 
 .name {
-    width: 80px;
-    height: 150px;
-    border-radius: 250px;
-    gap: 10px;
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    padding: 0;
     opacity: 1;
-    padding: 100px;
-    border-width: 2px;
-    background: #FFFFFF80;
-    border: 2px solid;
+    background: rgba(255, 255, 255, 0.75);
+    border: 2px solid rgba(255, 255, 255, 0.9);
     display: flex;
     justify-content: center;
     align-items: center;
-
-    border-image-source: linear-gradient(135.36deg, #FFFFFF 15.62%, rgba(255, 255, 255, 0) 36.65%, rgba(255, 255, 255, 0) 64.69%, #FFFFFF 85.71%);
-
-
-
-
+    box-shadow: 0 4px 20px rgba(137, 106, 227, 0.15);
 }
 
 .mini-container {
@@ -103,37 +98,30 @@
 }
 
 .info {
-    height: 30px;
-    width: 80px;
-    border-radius: 14px;
-    border-width: 1px;
-    padding-top: 10px;
-    padding-right: 16px;
-    padding-bottom: 10px;
-    padding-left: 16px;
+    padding: 6px 10px;
+    border-radius: 10px;
     position: absolute;
-    top: 8px;
-    left: 8px;
+    top: 10px;
+    left: 10px;
     color: white;
-    background: rgba(151, 148, 148, 0.12);
+    background: rgba(0, 0, 0, 0.45);
     backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    line-height: 1.4;
+    z-index: 10;
 }
 
 .time {
-    height: 10px;
-    width: 30px;
-    border-radius: 14px;
-    border-width: 1px;
-    padding-top: 10px;
-    padding-right: 16px;
-    padding-bottom: 10px;
-    padding-left: 16px;
+    padding: 4px 10px;
+    border-radius: 8px;
     position: absolute;
-    top: 65px;
-    left: 8px;
+    top: 68px;
+    left: 10px;
     color: white;
-    background: rgba(151, 148, 148, 0.12);
+    background: rgba(0, 0, 0, 0.40);
     backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    z-index: 10;
 }
 
 .time-align {
@@ -179,9 +167,6 @@
     width: 100% !important;
     height: 100% !important;
     object-fit: cover
-    
 }
 
-.video-player video {
-    
-}
+.video-player video {}
